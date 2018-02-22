@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-tap-highlight" content="no">
+    
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <!-- <link rel="icon" href="favicon.ico"> -->
+
+    <title></title>
+    
+    <link href="dist/css/mobile_jmcv2_4JF7.min.css" rel="stylesheet">
+
+    <!-- Bootstrap core CSS -->
+    <!--<link href="libs/bootstrap/css/bootstrap.min.css" rel="stylesheet">-->
+
+    <!-- Custom styles for this template -->
+    <!--<link href="css/starter-template.css" rel="stylesheet">-->
+    <!--
+    <link href="libs/mobiscroll/css/mobiscroll.animation.css" rel="stylesheet" type="text/css" />
+    <link href="libs/mobiscroll/css/mobiscroll.icons.css" rel="stylesheet" type="text/css" />
+    <link href="libs/mobiscroll/css/mobiscroll.frame.css" rel="stylesheet" type="text/css" />
+    <link href="libs/mobiscroll/css/mobiscroll.frame.ios.css" rel="stylesheet" type="text/css" />
+    <link href="libs/mobiscroll/css/mobiscroll.scroller.css" rel="stylesheet" type="text/css" />
+    <link href="libs/mobiscroll/css/mobiscroll.scroller.ios.css" rel="stylesheet" type="text/css" />-->
+  </head>
+
+  <body>
+    <script type='text/x-handlebars' id='components/spin-button'>
+    {{#if isIcon}}
+      {{#if isLoading}}
+          <span {{bind-attr class=":glyphicon loadingIcon"}}></span>
+      {{else}}
+          <span {{bind-attr class=":glyphicon loadedIcon"}}></span>
+      {{/if}}
+      <span class="sr-only">{{title}}</span>
+    {{else}}
+      {{#if isLoading}}
+        {{loadingText}}
+      {{else}}
+        {{title}}
+      {{/if}}
+    {{/if}}
+    </script>
+    <script type="text/x-handlebars" data-template-name="loading">
+    Loading...
+    </script>
+    <script type="text/x-handlebars" data-template-name="startup">
+    <div class = "startup">
+      {{#each error in errors.server_side_error}}
+        <div class="help-block text-danger">
+          {{error.message}}
+        </div>
+      {{/each}}
+      {{#if errors.length}}
+        <div>
+          <button {{action "retry"}} type="button" class="btn btn-primary">再试一次</button>
+        </div>
+      {{/if}}
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="application">
+    <!-- Nav tabs -->
+    <div class="navbar navbar-static-top" role="navigation">
+      <div class="header-title">
+        <span class = "t-shadow">{{panelTitle}}</span>
+        {{#if isInPlayRoute}}
+            <a {{bind-attr class=":btn-right controllers.mapplayer.isSetting:active"}} href="javascript:void(0)" {{action "openSetting"}} title = "设置">
+                <span class="glyphicon glyphicon-cog"></span>
+                <label class = "sr-only">设置</label>
+            </a>
+        {{/if}}
+      </div>
+    </div>
+    <!-- Tab panes -->
+    <div class="middler tab-content">
+      {{outlet}}
+    </div>
+    <div class="footer navbar-fixed-bottom">
+        {{#if isInMainRoute}}
+        <a class="btn-left" {{action "goAbout"}} title="关于我们">
+            <span class="glyphicon glyphicon-info-sign"></span>
+            <label class="sr-only">关于我们</label>
+        </a>
+        {{else}}
+        <a class="btn-left" {{action "goBack"}} title="返回">
+            <span class="glyphicon glyphicon-chevron-left"></span>
+            <label class="sr-only">返回</label>
+        </a>
+        {{/if}}
+        {{#if isInPlayRoute}}
+        <div class = "btns-middle">
+            <a href="javascript:void(0)" {{action "backward"}} title = "后退">
+                <span class="glyphicon glyphicon-backward"></span>
+                <label class = "sr-only">后退</label>
+            </a>
+            {{#if controllers.mapplayer.isPlaying}}
+                <a href="javascript:void(0)" {{action "togglePlay"}} title = "暂停">
+                    <span class="glyphicon glyphicon-pause"></span>
+                    <label class = "sr-only">暂停</label>
+                </a>
+            {{else}}
+                <a href="javascript:void(0)" {{action "togglePlay"}} title = "播放">
+                    <span class="glyphicon glyphicon-play"></span>
+                    <label class = "sr-only">播放</label>
+                </a>
+            {{/if}}
+            <a href="javascript:void(0)" {{action "forward"}} title = "前进">
+                <span class="glyphicon glyphicon-forward"></span>
+                <label class = "sr-only">前进</label>
+            </a>
+            <a href="javascript:void(0)" {{action "clear"}} title = "清除轨迹">
+                <span class="glyphicon glyphicon-ban-circle"></span>
+                <label class = "sr-only">清除轨迹</label>
+            </a>
+        </div>
+        {{/if}}
+        {{#if controllers.session.isLogined}}
+        <a class = "btn-right" href="javascript:void(0)" {{action "logout"}} title = "退出系统">
+            <span class="glyphicon glyphicon-off"></span>
+            <label class = "sr-only">退出系统</label>
+        </a>
+        {{/if}}
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="login">
+      <div class="navigable-container" id="login">
+        <div class="well">
+          <div class="form-signin" role="form">
+            <h2 class="form-signin-heading">登录</h2>
+            <div class="form-group">
+              <label for="log_name" class = "sr-only">用户</label>
+              {{input id = "log_name" type="text" class="form-control" placeholder="用户名" value=log_name}}
+            </div>
+            <div {{bind-attr class=":form-group errors.messages.length:has-error errors.messages.length:has-feedback"}}>
+              <div class="input-group">
+                <label for="log_password" class = "sr-only">密码</label>
+                {{input id = "log_password" type="password" action = "go" class="form-control" placeholder="密码" value=log_password}}
+                {{#if errors.messages.length}}
+                  <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#if log_password}}
+                  {{spin-button isLoading=isSaving disabled=isUnSavable isIcon=true action="go" class="input-group-addin addin-large pull-right" title = "登录"}}
+                {{/if}}
+              </div>
+              {{#each error in errors.server_side_error}}
+                <div class="help-block text-danger">
+                  {{error.message}}
+                </div>
+              {{/each}}
+            </div>
+          </div>
+        </div>
+      </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="start">
+    <div class="navigable-container" id="start">
+        <div class="screenicons-box">
+            {{#link-to "unitscene" title = "现场实录" class = "screenicon img-circle collapse"}}
+                <div class = "screenicon-inner t-shadow">
+                    <span class="glyphicon glyphicon-facetime-video"></span>
+                    <div>现场实录</div>
+                </div>
+            {{/link-to}}
+            {{#link-to "unitplay" title = "地图回放" class = "screenicon img-circle collapse"}}
+                <div class = "screenicon-inner t-shadow">
+                    <span class="glyphicon glyphicon-globe"></span>
+                    <div>地图回放</div>
+                </div>
+            {{/link-to}}
+        </div>
+    </div>
+    {{outlet}}
+    </script>
+    <script type="text/x-handlebars" data-template-name="unitscene">
+    <div class="navigable-container" id="unitscene">
+        <div class="unitscene-index navigable-pane active">
+            <div class = "p8">
+                <ul class="list-group form-horizontal">
+                    <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.unit_config.length:has-error"}}>
+                      <label class="control-label col-md-2" for="unit_config">设备</label>
+                      <div class="col-md-8 col-sm-12">
+                        {{view "select" id = "unit_config" class="form-control"
+                            content=unitConfigs
+                            optionLabelPath="content.dtuno"
+                            optionValuePath="content.unit_id"
+                            prompt="--请选择一个设备--"
+                            selection=selectedUnitConfig
+                        }}
+                        {{#if errors.unit_config}}
+                            <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                        {{/if}}
+                        {{#each error in errors.unit_config}}
+                            <div class="help-block text-danger">
+                                {{error.message}}
+                            </div>
+                        {{/each}}
+                      </div>
+                    </li>
+                    <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.project.length:has-error"}}>
+                      <label class="control-label col-md-2" for="project">项目</label>
+                      <div class="col-md-8 col-sm-12">
+                        {{view "select" id = "project" class="form-control"
+                            content=projects
+                            optionLabelPath="content.pro_name"
+                            optionValuePath="content.pro_id"
+                            prompt="--请选择一个项目--"
+                            selection=selectedProject
+                        }}
+                        {{#if errors.project}}
+                            <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                        {{/if}}
+                        {{#each error in errors.project}}
+                            <div class="help-block text-danger">
+                                {{error.message}}
+                            </div>
+                        {{/each}}
+                      </div>
+                    </li>
+                    <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.car.length:has-error"}}>
+                      <label class="control-label col-md-2" for="car">车辆</label>
+                      <div class="col-md-8 col-sm-12">
+                        {{view "select" id = "car" class="form-control"
+                            content=cars
+                            optionLabelPath="content.car_no"
+                            optionValuePath="content.car_id"
+                            prompt="--请选择一个车辆--"
+                            selection=selectedCar
+                        }}
+                        {{#if controllers.cars.isLoading}}
+                            <span class="glyphicon glyphicon-transfer form-control-feedback text-warning"></span>
+                        {{else}}
+                            {{#if errors.car}}
+                                <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                            {{/if}}
+                        {{/if}}
+                        {{#each error in errors.car}}
+                            <div class="help-block text-danger">
+                                {{error.message}}
+                            </div>
+                        {{/each}}
+                      </div>
+                    </li>
+                </ul>
+                <button type="button" {{action "start"}} class="btn btn-info btn-block">开始</button>
+            </div>
+        </div>
+        {{outlet}}
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="unitscene/unitmap">
+    {{#if controllers.google_script.isLoaded}}
+        {{#if isMapLoading}}
+            <div class = "loading">
+                <span class="glyphicon glyphicon-transfer"></span>
+                {{loadingText}}
+            </div>
+        {{/if}}
+        {{#if mapTipText.length}}
+            <div class = "map-tip dialog bg-danger text-danger">{{mapTipText}}</div>
+        {{/if}}
+    {{else}}
+        <div class = "loading">
+            <span class="glyphicon glyphicon-transfer"></span>
+            正在请求地图服务...
+        </div>
+    {{/if}}
+    </script>
+    <script type="text/x-handlebars" data-template-name="unitplay">
+    <div class="navigable-container" id="unitplay">
+        <div class="unitplay-index navigable-pane active">
+            <div class = "p8">
+                <ol class="breadcrumb">
+                    <li class="active">选择试验</li>
+                    <li>设置时间</li>
+                </ol>
+                <button type="button" {{action "goPlayfilter"}} class="btn btn-default btn-block btn-filter">
+                    <span>筛选</span>
+                    <span class="glyphicon glyphicon-filter pull-right" aria-hidden="true"></span>
+                </button>
+                <!-- List group -->
+                <div class="list-group">
+                    {{#if isLoading}}
+                        <div class="list-group-item text-center">
+                            <span class="glyphicon glyphicon-transfer" aria-hidden="true"></span>
+                        </div>
+                    {{else}}
+                        {{#if model.experiments.length}}
+                            {{#each exp in model.experiments}}
+                                <a class="list-group-item" {{action "selExperiment" exp}} href = "javascript:void(0)">
+                                    <span class="glyphicon glyphicon-chevron-right pull-right"></span>
+                                    <dl class = "dl-default">
+                                        <dt>{{exp.car_no}}-[{{exp.unit_no}}]</dt>
+                                        <dd>试验项目：{{exp.pro_name}}</dd>
+                                        <dd>试验地点：{{exp.pla_name}}</dd>
+                                        <dd>试验类型：{{exp.exp_type_name}}</dd>
+                                        <dd>开始时间：{{exp.start_time}}</dd>
+                                        <dd>结束时间：{{exp.end_time}}</dd>
+                                    </dl>
+                                </a>
+                            {{/each}}
+                            {{#unless isLastLoaded}}
+                                {{spin-button isIcon=true loadedIcon='glyphicon-chevron-down' isLoading=isLoadingMore disabled=isLoadingMore action="loadMore" class="btn btn-info btn-xs btn-block"}}
+                            {{/unless}}
+                        {{else}}
+                            <div class="list-group-item text-center text-danger">
+                                没有找到任何试验
+                            </div>
+                        {{/if}}
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+        {{outlet}}
+        {{outlet "mapplayer"}}
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="unitplay/playfilter">
+    <div class = "p8">
+        <ul class="list-group form-horizontal">
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.unit_config.length:has-error"}}>
+              <label class="control-label col-md-2" for="unit_config">设备</label>
+              <div class="col-md-8 col-sm-12">
+                {{view "select" id = "unit_config" class="form-control"
+                    content=unitConfigs
+                    optionLabelPath="content.dtuno"
+                    optionValuePath="content.unit_id"
+                    prompt="--请选择一个设备--"
+                    selection=selectedUnitConfig
+                }}
+                {{#if errors.unit_config}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.unit_config}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.project.length:has-error"}}>
+              <label class="control-label col-md-2" for="project">项目</label>
+              <div class="col-md-8 col-sm-12">
+                {{view "select" id = "project" class="form-control"
+                    content=projects
+                    optionLabelPath="content.pro_name"
+                    optionValuePath="content.pro_id"
+                    prompt="--请选择一个项目--"
+                    selection=selectedProject
+                }}
+                {{#if errors.project}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.project}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.car.length:has-error"}}>
+              <label class="control-label col-md-2" for="car">车辆</label>
+              <div class="col-md-8 col-sm-12">
+                {{view "select" id = "car" class="form-control"
+                    content=cars
+                    optionLabelPath="content.car_no"
+                    optionValuePath="content.car_id"
+                    prompt="--请选择一个车辆--"
+                    selection=selectedCar
+                }}
+                {{#if controllers.cars.isLoading}}
+                    <span class="glyphicon glyphicon-transfer form-control-feedback text-warning"></span>
+                {{else}}
+                    {{#if errors.car}}
+                        <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                    {{/if}}
+                {{/if}}
+                {{#each error in errors.car}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.exp_type.length:has-error"}}>
+              <label class="control-label col-md-2" for="exp_type">试验类型</label>
+              <div class="col-md-8 col-sm-12">
+                {{view "select" id = "exp_type" class="form-control"
+                    content=expTypes
+                    optionLabelPath="content.exp_type_name"
+                    optionValuePath="content.exp_type_id"
+                    prompt="--请选择一个试验类型--"
+                    selection=selectedExpType
+                }}
+                {{#if errors.exp_type}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.exp_type}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.place.length:has-error"}}>
+              <label class="control-label col-md-2" for="place">地点</label>
+              <div class="col-md-8 col-sm-12">
+                {{view "select" id = "place" class="form-control"
+                    content=places
+                    optionLabelPath="content.pla_name"
+                    optionValuePath="content.pla_id"
+                    prompt="--请选择一个地点--"
+                    selection=selectedPlace
+                }}
+                {{#if errors.place}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.place}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.start_time.length:has-error"}}>
+              <label class="control-label col-md-2" for="start_time">开始时间</label>
+              <div class="col-md-8 col-sm-12">
+                {{input id = "start_time" type="text" class="form-control mobiscroll-datetime" value=start_time}}
+                {{#if errors.start_time}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.start_time}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.end_time.length:has-error"}}>
+              <label class="control-label col-md-2" for="end_time">结束时间</label>
+              <div class="col-md-8 col-sm-12">
+                {{input id = "end_time" type="text" class="form-control mobiscroll-datetime" value=end_time}}
+                {{#if errors.end_time}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.end_time}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+        </ul>
+        <button type="button" {{action "search"}} class="btn btn-info btn-block">确认</button>
+        <button type="button" {{action "cancel"}} class="btn btn-default btn-block">取消</button>
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="unitplay/playtimer">
+    <div class = "p8">
+        <ol class="breadcrumb">
+            <li>选择试验</li>
+            <li class="active">设置时间</li>
+        </ol>
+        <div class="bs-callout bs-callout-info">
+            <div class = "bs-callout-title">
+                <a {{action "toggleDates"}} data-toggle="collapse" href="#collapseDates" aria-expanded="false" aria-controls="collapseDates" >
+                    <span {{bind-attr class=":glyphicon isDatesExpanded:glyphicon-triangle-bottom:glyphicon-triangle-right"}} aria-hidden="true"></span>
+                    参考日期
+                </a>
+            </div>
+            <div id = "collapseDates" class = "container-fluid bs-callout-body collapse">
+                <div class = "row">
+                    {{#if isLoadingDates}}
+                        <div class="col-xs-12 col-md-12 text-center">
+                            <span class="glyphicon glyphicon-transfer" aria-hidden="true"></span>
+                        </div>
+                    {{else}}
+                        {{#if dates.length}}
+                            {{#each date in dates}}
+                                <div class = "col-xs-4 col-md-2 text-center">
+                                    <code>{{date}}</code>
+                                </div>
+                            {{/each}}
+                        {{else}}
+                            <div class = "col-xs-12 col-md-12 text-danger">
+                                该试验还没有数据
+                            </div>
+                        {{/if}}
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+        <ul class="list-group form-horizontal">
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.start_time.length:has-error"}}>
+              <label class="control-label col-md-2" for="start_time">开始时间</label>
+              <div class="col-md-8 col-sm-12">
+                {{input id = "start_time" type="text" class="form-control mobiscroll-datetime" value=start_time}}
+                {{#if errors.start_time}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.start_time}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.end_time.length:has-error"}}>
+              <label class="control-label col-md-2" for="end_time">结束时间</label>
+              <div class="col-md-8 col-sm-12">
+                {{input id = "end_time" type="text" class="form-control mobiscroll-datetime" value=end_time}}
+                {{#if errors.end_time}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.end_time}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+              </div>
+            </li>
+        </ul>
+        {{#if isTimespanOut}}
+            <ul class="list-group text-warning text-center">
+                <li>
+                    开始结束时间跨度超过了3*24小时，这可能花费较长时间下载数据，而且有可能会造成手机卡顿，确定要继续吗？
+                </li>
+            </ul>
+        {{else}}
+            <ul class="list-group text-muted text-center">
+                <li>
+                    开始结束时间必须在试验时间
+                    [
+                    {{experiment.start_time}}
+                    -
+                    {{#if experiment.end_time}}
+                        {{experiment.end_time}}
+                    {{else}}
+                        未设置
+                    {{/if}}
+                    ]
+                    范围内
+                </li>
+            </ul>
+        {{/if}}
+        {{#if isTimespanOut}}
+            <button type="button" {{action "continue"}} class="btn btn-warning btn-block">确定</button>
+            <button type="button" {{action "break"}} class="btn btn-default btn-block">取消</button>
+        {{else}}
+            <button type="button" {{action "start"}} class="btn btn-info btn-block">开始</button>
+        {{/if}}
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="mapplayer">
+    {{#if controllers.google_script.isLoaded}}
+        {{#if isMapLoading}}
+            <div class = "loading">
+                <span class="glyphicon glyphicon-transfer"></span>
+                {{loadingText}}
+            </div>
+        {{/if}}
+        {{#if mapTipText.length}}
+            <div class = "map-tip dialog bg-danger text-danger">{{mapTipText}}</div>
+        {{/if}}
+        {{#if isInfoFix}}
+        <div class = "map-info dialog dialog-bottom bg-info text-info">
+            <span>车辆[{{car_no}}]</span>
+            <span>速度[{{syncSpeed}}]</span>
+            <span>时间[{{syncGpsTime}}]</span>
+        </div>
+        {{/if}}
+        {{#if isSetting}}
+        <div class = "map-setting dialog bg-info">
+            <div class = "p8">
+                <ul class="list-group form-horizontal">
+                    <li class="list-group-item form-group">
+                        <label class="col-sm-2 col-xs-2 control-label"><span class="glyphicon glyphicon-time"></span></label>
+                        <div class="col-sm-6 col-xs-8">
+                            <div class="input-group">
+                                {{view "number"
+                                    symbol="+"
+                                    dot=2
+                                    class="form-control"
+                                    placeholder="播放速度"
+                                    value=timeSpace
+                                }}
+                                <div class="input-group-addon">秒/帧</div>
+                            </div>
+                        </div>
+                    </li>
+                    <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.settingIndex.length:has-error"}}>
+                        <label class="col-sm-2 col-xs-2 control-label"><span class="glyphicon glyphicon-screenshot"></span></label>
+                        <div class="col-sm-6 col-xs-8">
+                            <div class="input-group">
+                                {{view "number"
+                                    symbol="+"
+                                    dot=0
+                                    class="form-control"
+                                    placeholder="进度"
+                                    value=settingIndex
+                                }}
+                                <div class="input-group-addon">帧</div>
+                            </div>
+                            {{#if errors.settingIndex}}
+                              <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                            {{/if}}
+                            <div class = "help-block">数据总长度为{{dataLength}}，当前处于第{{index}}帧[从0开始]</div>
+                            {{#each error in errors.settingIndex}}
+                              <div class="help-block text-danger">
+                                {{error.message}}
+                              </div>
+                            {{/each}}
+                        </div>
+                    </li>
+                    <li class="list-group-item form-group">
+                        <label class="col-sm-2 col-xs-2 control-label"><span class="glyphicon glyphicon-link"></span></label>
+                        <div class="col-sm-6 col-xs-8">
+                            <div class="btn-group form-control" data-toggle="buttons">
+                                <label {{bind-attr class=":btn :btn-default :btn-sm isTraceLine:active"}} {{action "setTraceMode" "line"}}>
+                                    <input type="radio" name="filterTypes"> 启用轨迹
+                                </label>
+                                <label {{bind-attr class=":btn :btn-default :btn-sm isTraceNone:active"}} {{action "setTraceMode" "none"}}>
+                                    <input type="radio" name="filterTypes"> 禁用轨迹
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                    <li class="list-group-item form-group">
+                        <label class="col-sm-2 col-xs-2 control-label"><span class="glyphicon glyphicon-comment"></span></label>
+                        <div class="col-sm-6 col-xs-8">
+                            <div class="btn-group form-control" data-toggle="buttons">
+                                <label {{bind-attr class=":btn :btn-default :btn-sm isNeedToShowInfo:active"}} {{action "setIsNeedToShowInfo" true}}>
+                                    <input type="radio" name="filterTypes"> 显示消息
+                                </label>
+                                <label {{bind-attr class=":btn :btn-default :btn-sm isNeedToShowInfo::active"}} {{action "setIsNeedToShowInfo" false}}>
+                                    <input type="radio" name="filterTypes"> 不显示消息
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+                <button {{action "closeSetting"}} type="button" class="btn btn-info btn-sm btn-block">完成</button>
+            </div>
+        </div>
+        {{/if}}
+    {{else}}
+        <div class = "loading">
+            <span class="glyphicon glyphicon-transfer"></span>
+            正在请求地图服务...
+        </div>
+    {{/if}}
+    </script>
+    <script type="text/x-handlebars" data-template-name="about">
+    <div class="navigable-container" id="about">
+        <div class = "about-index navigable-pane active">
+            <div class = "p8">
+                <ul class="list-group">
+                    {{#if controllers.session.isLogined}}
+                        <li class="list-group-item text-success">
+                            <span class="glyphicon glyphicon-user"></span>
+                            {{controllers.session.logName}}
+                        </li>
+                        <li class="list-group-item text-success">
+                            <span class="glyphicon glyphicon-education"></span>
+                            {{controllers.session.roleName}}
+                        </li>
+                    {{else}}
+                        <li class="list-group-item text-muted">您还没有登录</li>
+                    {{/if}}
+                </ul>
+                <ul class="list-group">
+                    <li class="list-group-item">{{controllers.application.appTitle}}</li>
+                    <li class="list-group-item">{{controllers.application.author}}</li>
+                    <li class="list-group-item">{{controllers.application.copyright}}</li>
+                    <li class="list-group-item">{{controllers.application.version}}</li>
+                </ul>
+                {{#if controllers.session.isLogined}}
+                    <button type="button" {{bind-attr disabled = controllers.startup.isLoadingSync}} {{action "syncStartup"}} class="btn btn-default btn-block">
+                        <span class="glyphicon glyphicon-cloud-download" aria-hidden="true"></span>
+                        <span>同步数据</span>
+                        {{#if controllers.startup.isLoadingSync}}
+                            <div class = "text-muted">
+                                <span class="glyphicon glyphicon-transfer"></span>
+                            </div>
+                        {{else}}
+                            <div class = "text-muted">于[{{controllers.startup.sync}}]成功同步</div>
+                        {{/if}}
+                    </button>
+                {{else}}
+                    <div class="list-group">
+                        <a class="list-group-item" {{action "goDns"}} href = "javascript:void(0)">
+                            <span class="glyphicon glyphicon-chevron-right pull-right"></span>
+                            <span class="glyphicon glyphicon-cloud" aria-hidden="true"></span>
+                            <span>域名设置</span>
+                            {{#if dns.length}}
+                                <span class = "text-muted pull-right">{{dns}}</span>
+                            {{else}}
+                                <span class = "text-danger pull-right">您还没有设置域名</span>
+                            {{/if}}
+                        </a>
+                    </div>
+                {{/if}}
+            </div>
+        </div>
+        {{outlet}}
+    </div>
+    </script>
+    <script type="text/x-handlebars" data-template-name="about/dns">
+    <div class = "p8">
+        <ul class="list-group form-horizontal">
+            <li {{bind-attr class=":list-group-item :form-group :has-feedback errors.dns.length:has-error"}}>
+              <div class="col-md-12 col-sm-12">
+                {{input id = "dns" type="text" class="form-control" value=dns}}
+                {{#if errors.dns}}
+                    <span class="glyphicon glyphicon-remove form-control-feedback"></span>
+                {{/if}}
+                {{#each error in errors.dns}}
+                    <div class="help-block text-danger">
+                        {{error.message}}
+                    </div>
+                {{/each}}
+                <div class="help-block text-muted">
+                    请输入有效的域名地址，例如[http://vwtest.gicp.net:7777/][https://www.baidu.com/]
+                </div>
+              </div>
+            </li>
+        </ul>
+        {{spin-button isLoading=isTesting disabled=isTesting action="save" loadingText="Loading" title = "保存" class="btn btn-info btn-block"}}
+        <button type="button" {{action "cancel"}} class="btn btn-default btn-block">取消</button>
+    </div>
+    </script>
+
+    <script src="dist/js/mobile_jmcv2_4JF7.min.js"></script>
+    <!--
+    <script src="libs/jquery/jquery.min.js"></script>
+    <script src="js/base/ho.js"></script>
+    <script src="libs/bootstrap/js/bootstrap.min.js"></script>
+    <script src="js/base/bootstrap-navigable.js"></script>
+    <script src="js/base/screenicons.js"></script>
+    <script src="libs/ember/handlebars-v2.0.0.js"></script>
+    <script src="libs/ember/ember-1.9.1.js"></script>
+    <script src="libs/ember/ember-data.min.js"></script>
+    <script src="libs/jwt/jsrsasign-4.1.4-all-min.js"></script>
+    <script src="libs/jwt/json-sans-eval-min.js"></script>
+    <script src="libs/jwt/jws-3.1.min.js"></script>
+
+    <script src="libs/mobiscroll/js/mobiscroll.core.js"></script>
+    <script src="libs/mobiscroll/js/mobiscroll.frame.js"></script>
+    <script src="libs/mobiscroll/js/mobiscroll.scroller.js"></script>
+    <script src="libs/mobiscroll/js/mobiscroll.util.datetime.js"></script>
+    <script src="libs/mobiscroll/js/mobiscroll.datetimebase.js"></script>
+    <script src="libs/mobiscroll/js/mobiscroll.datetime.js"></script>
+    <script src="libs/mobiscroll/js/mobiscroll.frame.ios.js"></script>
+    <script src="libs/mobiscroll/js/i18n/mobiscroll.i18n.zh.js"></script>
+
+    <script src="js/base/views.js"></script>
+    <script src="js/base/ember_extend.js"></script>
+    <script src="js/base/app.js"></script>
+    <script src="js/app/google_script.js"></script>
+    <script src="js/app/session.js"></script>
+    <script src="js/app/startup.js"></script>
+    <script src="js/app/about.js"></script>
+    <script src="js/app/dns.js"></script>
+    <script src="js/app/login.js"></script>
+    <script src="js/app/startup.js"></script>
+    <script src="js/app/start.js"></script>
+    <script src="js/app/place.js"></script>
+    <script src="js/app/exp_type.js"></script>
+    <script src="js/app/project.js"></script>
+    <script src="js/app/unit_config.js"></script>
+    <script src="js/app/map_offset.js"></script>
+    <script src="js/app/marker_icon.js"></script>
+    <script src="js/app/car.js"></script>
+    <script src="js/app/experiment.js"></script>
+    <script src="js/app/unitscene.js"></script>
+    <script src="js/app/unitmap.js"></script>
+    <script src="js/app/unitplay.js"></script>
+    <script src="js/app/playfilter.js"></script>
+    <script src="js/app/playtimer.js"></script>
+    <script src="js/app/mapplayer.js"></script>-->
+  </body>
+</html>
