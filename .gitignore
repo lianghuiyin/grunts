@@ -1,0 +1,11 @@
+**/bin/**
+**/build/*
+**/node_modules/*
+**/tmp/*
+**/.npm/*
+**/.DS_Store/*
+**/dist/*
+**/src/*
+
+.build
+.DS_Store
